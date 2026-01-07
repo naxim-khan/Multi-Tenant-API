@@ -55,6 +55,7 @@ export class UsersService {
             data: {
                 tenant_id: createUserDto.tenant_id,
                 email: createUserDto.email,
+                name: createUserDto.name,
                 password_hash,
                 role: createUserDto.role,
             },
@@ -157,6 +158,7 @@ export class UsersService {
         // Prepare update data
         const updateData: any = {
             email: updateUserDto.email,
+            name: updateUserDto.name,
             role: updateUserDto.role,
         };
 

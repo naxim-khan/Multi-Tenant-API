@@ -52,6 +52,7 @@ model Tenant {
 model User {
   id            Int           @id @default(autoincrement())
   tenant_id     Int
+  name          String?
   email         String        @unique
   password_hash String
   role          Role          @default(DEVELOPER)

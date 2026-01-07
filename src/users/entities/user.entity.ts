@@ -4,6 +4,7 @@ export class UserEntity {
     id: number;
     tenant_id: number;
     email: string;
+    name?: string;
     role: Role;
     created_at: Date;
 
