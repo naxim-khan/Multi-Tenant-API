@@ -4,9 +4,12 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { Logger } from 'nestjs-pino';
 import { ValidationPipe } from '@nestjs/common';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
 
   // Global API prefix
   app.setGlobalPrefix('api');
@@ -28,8 +31,19 @@ async function bootstrap() {
     }),
   );
 
+  // Global exception filter
+  app.useGlobalFilters(new AllExceptionsFilter());
+
   app.useLogger(app.get(Logger));
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+
+  // Clean startup message
+  console.log('\n🚀 Server is running!');
+  console.log(`📍 Local:            http://localhost:${port}/api`);
+  console.log(`🌍 Network:          http://0.0.0.0:${port}/api`);
+  console.log(`📚 Environment:      ${process.env.NODE_ENV || 'development'}`);
+  console.log(`⏰ Started at:       ${new Date().toLocaleString()}\n`);
 }
 bootstrap();

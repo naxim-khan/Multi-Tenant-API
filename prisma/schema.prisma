@@ -12,7 +12,7 @@ datasource db {
 
 enum Role {
   ADMIN
-  USER
+  DEVELOPER
   MANAGER
 }
 
@@ -54,7 +54,7 @@ model User {
   tenant_id     Int
   email         String        @unique
   password_hash String
-  role          Role          @default(USER)
+  role          Role          @default(DEVELOPER)
   created_at    DateTime      @default(now())
   tenant        Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   refresh_token RefreshToken?
