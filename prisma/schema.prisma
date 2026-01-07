@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  USER
+  MANAGER
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+  ON_HOLD
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Tenant {
+  id         Int           @id @default(autoincrement())
+  name       String
+  created_at DateTime      @default(now())
+  users      User[]
+  logs       ActivityLog[]
+  projects   Project[]
+  tasks      Task[]
+
+  @@map("tenants")
+}
+
+model User {
+  id            Int           @id @default(autoincrement())
+  tenant_id     Int
+  email         String        @unique
+  password_hash String
+  role          Role          @default(USER)
+  created_at    DateTime      @default(now())
+  tenant        Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  refresh_token RefreshToken?
+  logs          ActivityLog[]
+  projects      Project[]     @relation("ProjectOwner")
+  tasks         Task[]        @relation("TaskAssignee")
+
+  @@index([tenant_id])
+  @@map("users")
+}
+
+model RefreshToken {
+  id           Int      @id @default(autoincrement())
+  user_id      Int      @unique
+  hashed_token String
+  is_revoked   Boolean  @default(false)
+  expires_at   DateTime
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model ActivityLog {
+  id          Int      @id @default(autoincrement())
+  tenant_id   Int
+  user_id     Int
+  entity_type String
+  entity_id   Int
+  action      String
+  created_at  DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([user_id])
+  @@map("activity_logs")
+}
+
+model Project {
+  id         Int           @id @default(autoincrement())
+  tenant_id  Int
+  owner_id   Int
+  name       String
+  status     ProjectStatus @default(ACTIVE)
+  created_at DateTime      @default(now())
+  tenant     Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  owner      User          @relation("ProjectOwner", fields: [owner_id], references: [id], onDelete: Restrict)
+  tasks      Task[]
+
+  @@index([tenant_id])
+  @@index([owner_id])
+  @@map("projects")
+}
+
+model Task {
+  id               Int          @id @default(autoincrement())
+  tenant_id        Int
+  project_id       Int
+  assigned_user_id Int?
+  title            String
+  description      String?
+  status           TaskStatus   @default(TODO)
+  priority         TaskPriority @default(MEDIUM)
+  due_date         DateTime?
+  created_at       DateTime     @default(now())
+  tenant           Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  project          Project      @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  assignee         User?        @relation("TaskAssignee", fields: [assigned_user_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id])
+  @@index([project_id])
+  @@index([assigned_user_id])
+  @@map("tasks")
+}
