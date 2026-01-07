@@ -5,6 +5,7 @@ import compression from 'compression';
 import { Logger } from 'nestjs-pino';
 import { ValidationPipe } from '@nestjs/common';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -35,6 +36,16 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   app.useLogger(app.get(Logger));
+
+  // Swagger Documentation
+  const config = new DocumentBuilder()
+    .setTitle('Multi-Tenant SaaS API')
+    .setDescription('Professional SaaS backend with RBAC and Multi-Tenancy')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
