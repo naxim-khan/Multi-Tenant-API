@@ -23,9 +23,9 @@ export class UsersService {
     constructor(private readonly prisma: PrismaService) { }
 
     /**
-     * Create a new user with hashed password
+     * Create a new user with hashed password within a specific tenant
      */
-    async create(createUserDto: CreateUserDto) {
+    async create(createUserDto: CreateUserDto, tenant_id: number) {
         // Check if user already exists
         const existingUser = await this.prisma.user.findUnique({
             where: { email: createUserDto.email },
@@ -35,25 +35,16 @@ export class UsersService {
             throw new ConflictException('User with this email already exists');
         }
 
-        // Verify tenant exists
-        const tenant = await this.prisma.tenant.findUnique({
-            where: { id: createUserDto.tenant_id },
-        });
-
-        if (!tenant) {
-            throw new BadRequestException('Tenant not found');
-        }
-
         // Hash password
         const password_hash = await bcrypt.hash(
             createUserDto.password,
             this.SALT_ROUNDS,
         );
 
-        // Create user
+        // Create user with explicit tenant_id from context
         const user = await this.prisma.user.create({
             data: {
-                tenant_id: createUserDto.tenant_id,
+                tenant_id,
                 email: createUserDto.email,
                 name: createUserDto.name,
                 password_hash,
@@ -65,14 +56,13 @@ export class UsersService {
     }
 
     /**
-   * Find all users with cursor-based pagination and filtering
+   * Find all users with cursor-based pagination and filtering within a tenant
    */
-    async findAll(queryDto: QueryUsersDto) {
-        const { cursor, limit = 10, tenant_id, role } = queryDto;
+    async findAll(queryDto: QueryUsersDto, tenant_id: number) {
+        const { cursor, limit = 10, role } = queryDto;
 
-        // Build where clause
-        const where: any = {};
-        if (tenant_id) where.tenant_id = tenant_id;
+        // Build where clause - always force tenant_id
+        const where: any = { tenant_id };
         if (role) where.role = role;
 
         // Decode cursor if provided
@@ -109,11 +99,11 @@ export class UsersService {
     }
 
     /**
-     * Find one user by ID
+     * Find one user by ID within a specific tenant
      */
-    async findOne(id: number) {
-        const user = await this.prisma.user.findUnique({
-            where: { id },
+    async findOne(id: number, tenant_id: number) {
+        const user = await this.prisma.user.findFirst({
+            where: { id, tenant_id },
             include: {
                 tenant: {
                     select: {
@@ -132,16 +122,16 @@ export class UsersService {
     }
 
     /**
-     * Update user by ID
+     * Update a user within a specific tenant
      */
-    async update(id: number, updateUserDto: UpdateUserDto) {
-        // Check if user exists
-        const existingUser = await this.prisma.user.findUnique({
-            where: { id },
+    async update(id: number, updateUserDto: UpdateUserDto, tenant_id: number) {
+        // Ensure user exists within the specified tenant
+        const existingUser = await this.prisma.user.findFirst({
+            where: { id, tenant_id },
         });
 
         if (!existingUser) {
-            throw new NotFoundException(`User with ID ${id} not found`);
+            throw new NotFoundException(`User with ID ${id} not found in tenant ${tenant_id}`);
         }
 
         // If email is being updated, check for conflicts
@@ -170,9 +160,9 @@ export class UsersService {
             );
         }
 
-        // Update user
+        // Update user, ensuring it's within the correct tenant
         const user = await this.prisma.user.update({
-            where: { id },
+            where: { id, tenant_id },
             data: updateData,
         });
 
@@ -180,17 +170,11 @@ export class UsersService {
     }
 
     /**
-     * Soft delete user by ID
+     * Remove a user within a specific tenant
      */
-    async remove(id: number) {
-        // Check if user exists
-        const user = await this.prisma.user.findUnique({
-            where: { id },
-        });
-
-        if (!user) {
-            throw new NotFoundException(`User with ID ${id} not found`);
-        }
+    async remove(id: number, tenant_id: number) {
+        // Ensure user exists within the specified tenant before attempting to delete
+        await this.findOne(id, tenant_id);
 
         // Delete user (hard delete for now, can be changed to soft delete)
         await this.prisma.user.delete({
