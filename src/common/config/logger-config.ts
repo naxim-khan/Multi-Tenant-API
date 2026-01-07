@@ -18,7 +18,7 @@ export const loggerConfig: Params = {
                     },
                 },
                 {
-                    target: join(__dirname, '..', 'utils', 'log-splitter.js'),
+                    target: join(process.cwd(), 'dist', 'src', 'common', 'utils', 'log-splitter.js'),
                     level: 'info',
                     options: {},
                 },
